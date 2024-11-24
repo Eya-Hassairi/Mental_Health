@@ -1,56 +1,79 @@
-import React, { useState, useEffect } from "react";
-import { Container, Row } from "react-bootstrap";
-import Button from "react-bootstrap/Button";
+import React, { useEffect, useState } from "react";
+import { Button, Col, Container, Form, Row } from "react-bootstrap";
+import { io } from "socket.io-client";
 import Particle from "../Particle";
-import pdf from "../../Assets/../Assets/Soumyajit_Behera-BIT_MESRA.pdf";
-import { AiOutlineDownload } from "react-icons/ai";
-import { Document, Page, pdfjs } from "react-pdf";
-import "react-pdf/dist/esm/Page/AnnotationLayer.css";
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
-function ResumeNew() {
-  const [width, setWidth] = useState(1200);
+// Créez une connexion au serveur Socket.io (assurez-vous que le backend est à l'adresse correcte)
+const socket = io("http://localhost:5000"); // Remplacez par l'URL de votre serveur backend
+
+function Consulting() {
+  const [message, setMessage] = useState("");
+  const [messages, setMessages] = useState([]);
+  const [username, setUsername] = useState("User");
 
   useEffect(() => {
-    setWidth(window.innerWidth);
+    // Écoutez les messages entrants du serveur
+    socket.on("receive_message", (data) => {
+      setMessages((prevMessages) => [...prevMessages, data]);
+    });
+
+    // Nettoyage de l'écouteur lors de la déconnexion du composant
+    return () => {
+      socket.off("receive_message");
+    };
   }, []);
+
+  // Fonction pour envoyer un message
+  const sendMessage = () => {
+    if (message.trim() !== "") {
+      const messageData = { username, message };
+      socket.emit("send_message", messageData); // Envoie au serveur
+      setMessages((prevMessages) => [...prevMessages, messageData]); // Ajoute localement
+      setMessage(""); // Réinitialise le champ de message
+    }
+  };
 
   return (
     <div>
-      <Container fluid className="resume-section">
+      <Container fluid className="consulting-section">
         <Particle />
-        <Row style={{ justifyContent: "center", position: "relative" }}>
-          <Button
-            variant="primary"
-            href={pdf}
-            target="_blank"
-            style={{ maxWidth: "250px" }}
-          >
-            <AiOutlineDownload />
-            &nbsp;Download CV
-          </Button>
-        </Row>
-
-        <Row className="resume">
-          <Document file={pdf} className="d-flex justify-content-center">
-            <Page pageNumber={1} scale={width > 786 ? 1.7 : 0.6} />
-          </Document>
-        </Row>
-
-        <Row style={{ justifyContent: "center", position: "relative" }}>
-          <Button
-            variant="primary"
-            href={pdf}
-            target="_blank"
-            style={{ maxWidth: "250px" }}
-          >
-            <AiOutlineDownload />
-            &nbsp;Download CV
-          </Button>
+        <Row className="justify-content-center mt-4">
+          <Col md={8}>
+            <h2 className="text-center">Consulting Chat Room</h2>
+            <div
+              className="chat-box"
+              style={{
+                height: "400px",
+                overflowY: "scroll",
+                border: "1px solid #ccc",
+                padding: "10px",
+                borderRadius: "8px",
+                backgroundColor: "#f9f9f9",
+              }}
+            >
+              {messages.map((msg, index) => (
+                <div key={index} style={{ marginBottom: "10px" }}>
+                  <strong>{msg.username}:</strong> {msg.message}
+                </div>
+              ))}
+            </div>
+            <Form className="mt-3" onSubmit={(e) => e.preventDefault()}>
+              <Form.Control
+                type="text"
+                placeholder="Enter your message..."
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                onKeyPress={(e) => e.key === "Enter" && sendMessage()}
+              />
+              <Button className="mt-2" variant="primary" onClick={sendMessage}>
+                Send
+              </Button>
+            </Form>
+          </Col>
         </Row>
       </Container>
     </div>
   );
 }
 
-export default ResumeNew;
+export default Consulting;
